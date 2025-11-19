@@ -1,65 +1,92 @@
-import Image from "next/image";
+"use client";
+import { useEffect, useState, useRef } from "react";
+import { motion } from "motion/react";
 
 export default function Home() {
+  const [title, setTitle] = useState("");
+  const [context, setContext] = useState("");
+  const [isScrolling, setIsScrolling] = useState(false);
+  const contextRef = useRef<HTMLTextAreaElement | null>(null);
+  const [createdDate] = useState<Date>(new Date());
+
+  useEffect(() => {
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement;
+      const scrollTop = target.scrollTop;
+      setIsScrolling(scrollTop > 0);
+    };
+
+    const container = document.querySelector(".w-full.h-full.overflow-auto");
+    if (container) {
+      container.addEventListener("scroll", handleScroll);
+    }
+
+    return () => {
+      if (container) {
+        container.removeEventListener("scroll", handleScroll);
+      }
+    };
+  }, []);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className=" w-full h-full overflow-auto">
+      <motion.div
+        className={`w-full px-4 pt-4 min-h-14 ${
+          isScrolling ? "border-b bg-zinc-50" : ""
+        } h-auto sticky bg-white -top-3 overflow-hidden`}
+      >
+        {/*
+        <h1 className=" absolute top-1 text-black/50 right-0 left-0 mx-auto w-min text-sm font-semibold whitespace-nowrap">
+          {createdDate.toLocaleDateString("en-US", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })}{" "}
+          at{" "}
+          {createdDate.toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          })}
+        </h1>
+        */}
+        {!title && (
+          <motion.h1
+            initial={true}
+            className=" font-bold text-3xl text-black/20 -z-10 top-3 h-min bottom-0 my-auto left-4 absolute select-none pointer-events-none"
+          >
+            Title
+          </motion.h1>
+        )}
+        <motion.textarea
+          key={"Title"}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className=" w-full min-h-14 caret-amber-500 bg-transparent text-3xl z-20 font-bold focus:outline-none resize-none p-0 py-2.5"
+          rows={1}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              contextRef.current?.focus();
+            }
+          }}
+          onInput={(e) => {
+            e.currentTarget.style.height = "auto";
+            e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
+          }}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </motion.div>
+      <motion.textarea
+        key={"Context"}
+        ref={contextRef}
+        value={context}
+        onChange={(e) => setContext(e.target.value)}
+        className=" w-full caret-amber-500 resize-none focus:outline-none px-4"
+        onInput={(e) => {
+          e.currentTarget.style.height = "auto";
+          e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
+        }}
+      />
     </div>
   );
 }
