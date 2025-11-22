@@ -1,22 +1,66 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { motion } from "motion/react";
+import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  ArrowDownToDot,
+  ArrowDownToLine,
+  ArrowDownWideNarrow,
+  Ellipsis,
+  Menu,
+  Trash,
+} from "lucide-react";
 
 export default function Home() {
+  const COLLAPSED_TITLE_HEIGHT = 56;
   const [title, setTitle] = useState("");
   const [context, setContext] = useState("");
-  const [isScrolling, setIsScrolling] = useState(false);
+  const pageRef = useRef<HTMLDivElement | null>(null);
+  const [scrollScale, setScrollScale] = useState(1);
+  const [hasScrolled, setHasScrolled] = useState(false);
+  const [titleHeight, setTitleHeight] = useState(COLLAPSED_TITLE_HEIGHT);
   const contextRef = useRef<HTMLTextAreaElement | null>(null);
   const [createdDate] = useState<Date>(new Date());
+  const hasMultipleLines = /\r?\n/.test(title);
+  const exceedsCollapsedHeight = titleHeight > COLLAPSED_TITLE_HEIGHT + 1;
+  const canCollapseTitle =
+    (hasMultipleLines || exceedsCollapsedHeight) && title.trim().length > 0;
+  const shouldCollapseTitle = hasScrolled && canCollapseTitle;
+  const firstLine = title.split(/\r?\n/)[0] ?? "";
+  const displayedTitleHeight = shouldCollapseTitle
+    ? COLLAPSED_TITLE_HEIGHT
+    : Math.max(titleHeight, COLLAPSED_TITLE_HEIGHT);
+  const collapsedTitle =
+    canCollapseTitle && firstLine ? `${firstLine}...` : firstLine;
 
   useEffect(() => {
     const handleScroll = (e: Event) => {
       const target = e.target as HTMLElement;
       const scrollTop = target.scrollTop;
-      setIsScrolling(scrollTop > 0);
+
+      // Maksymalna wartość scroll, po której scale osiąga minimum (np. 100px)
+      const maxScroll = 80;
+      // Minimalna wartość scale (0.95)
+      const minScale = 0.8;
+
+      const scale = Math.max(
+        minScale,
+        1 - (scrollTop / maxScroll) * (1 - minScale)
+      );
+      console.log(scale);
+      setScrollScale(scale);
+      setHasScrolled(scrollTop > 0);
     };
 
-    const container = document.querySelector(".w-full.h-full.overflow-auto");
+    const container = pageRef.current;
     if (container) {
       container.addEventListener("scroll", handleScroll);
     }
@@ -29,11 +73,49 @@ export default function Home() {
   }, []);
 
   return (
-    <div className=" w-full h-full overflow-auto">
+    <div ref={pageRef} className=" w-full h-full overflow-auto">
       <motion.div
-        className={`w-full px-4 pt-4 min-h-14 ${
-          isScrolling ? "border-b bg-zinc-50" : ""
-        } h-auto sticky bg-white -top-3 overflow-hidden`}
+        className={` border-b h-14 sticky top-0 flex justify-end px-5 w-full items-center bg-zinc-50`}
+      >
+        <div className=" w-min items-center justify-center gap-x-2 flex h-full">
+          <DropdownMenu>
+            <DropdownMenuTrigger>
+              <Ellipsis className=" w-5 h-5 text-amber-500" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className=" bg-white rounded-xl min-w-[12rem]"
+            >
+              <DropdownMenuItem className=" justify-between font-semibold rounded-lg hover:!bg-neutral-200/70">
+                Summarize (AI)
+                <ArrowDownWideNarrow className=" w-4 h-4 text-amber-500" />
+              </DropdownMenuItem>
+              <DropdownMenuItem className=" justify-between font-semibold rounded-lg hover:!bg-neutral-200/70">
+                Save
+                <ArrowDownToLine className=" w-4 h-4 text-amber-500" />
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                className=" justify-between font-semibold rounded-lg hover:!bg-neutral-200/70"
+              >
+                Delete
+                <Trash className=" w-4 h-4" />
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </motion.div>
+      <motion.div
+        animate={{
+          scale: scrollScale,
+        }}
+        transition={{
+          type: "spring",
+          stiffness: 300,
+          damping: 30,
+        }}
+        className={`w-full px-4 pt-4 origin-left min-h-14 h-auto sticky bg-transparent -top-3.5 overflow-hidden`}
       >
         {/*
         <h1 className=" absolute top-1 text-black/50 right-0 left-0 mx-auto w-min text-sm font-semibold whitespace-nowrap">
@@ -58,23 +140,47 @@ export default function Home() {
             Title
           </motion.h1>
         )}
-        <motion.textarea
-          key={"Title"}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className=" w-full min-h-14 caret-amber-500 bg-transparent text-3xl z-20 font-bold focus:outline-none resize-none p-0 py-2.5"
-          rows={1}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              contextRef.current?.focus();
-            }
-          }}
-          onInput={(e) => {
-            e.currentTarget.style.height = "auto";
-            e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
-          }}
-        />
+        <div className="relative" style={{ height: displayedTitleHeight }}>
+          <motion.textarea
+            key={"Title"}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className=" w-full min-h-14 caret-amber-500 bg-transparen text-black text-3xl z-20 font-bold focus:outline-none resize-none p-0 py-2.5"
+            style={{
+              opacity: shouldCollapseTitle ? 0 : 1,
+              pointerEvents: shouldCollapseTitle ? "none" : "auto",
+              height: displayedTitleHeight,
+            }}
+            rows={1}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                if (shouldCollapseTitle) {
+                  e.preventDefault();
+                } else {
+                  e.preventDefault();
+                  contextRef.current?.focus();
+                }
+              }
+            }}
+            onInput={(e) => {
+              const textarea = e.currentTarget;
+              textarea.style.height = "auto";
+              const nextHeight = Math.max(
+                textarea.scrollHeight,
+                COLLAPSED_TITLE_HEIGHT
+              );
+              textarea.style.height = `${nextHeight}px`;
+              setTitleHeight(nextHeight);
+            }}
+          />
+          {shouldCollapseTitle && (
+            <div className="pointer-events-none absolute inset-0 z-30 flex items-center">
+              <div className="w-full text-black text-3xl font-bold py-2.5 truncate">
+                {collapsedTitle}
+              </div>
+            </div>
+          )}
+        </div>
       </motion.div>
       <motion.textarea
         key={"Context"}
