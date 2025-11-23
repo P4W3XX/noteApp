@@ -3,6 +3,7 @@ import { Noto_Sans } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/sidebar";
 import SearchUI from "@/components/searchUI";
+import { UserSyncProvider } from "@/components/providers/user-sync-provider";
 
 const notoSans = Noto_Sans({
   variable: "--font-noto-sans",
@@ -25,9 +26,11 @@ export default function RootLayout({
       <body
         className={`${notoSans.className} antialiased flex w-screen h-svh`}
       >
-        <SearchUI />
-        <Sidebar />
-        {children}
+        <UserSyncProvider>
+          <SearchUI />
+          <Sidebar />
+          {children}
+        </UserSyncProvider>
       </body>
     </html>
   );

@@ -1,13 +1,72 @@
+"use client";
+
+import { useState } from "react";
+
 import { Button } from "@/components/ui/button";
+import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
+import { useUserStore } from "@/store/user";
 
 export default function LoginPage() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { name, setName } = useUserStore();
+
+  const handleGoogleLogin = async () => {
+    try {
+      setError(null);
+      setIsLoading(true);
+
+      const supabase = getSupabaseBrowserClient();
+      const redirectTo = process.env.NEXT_PUBLIC_SUPABASE_REDIRECT_URL;
+
+      const { data, error: supabaseError } =
+        await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: redirectTo ? { redirectTo } : undefined,
+        });
+
+      if (supabaseError) {
+        throw supabaseError;
+      }
+
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+
+      const { data: userData, error: getUserError } =
+        await supabase.auth.getUser();
+
+      if (getUserError) {
+        throw getUserError;
+      }
+
+      const user = userData.user;
+      if (user) {
+        const metadata = user.user_metadata as Record<string, unknown> | null;
+        const nameFromMetadata =
+          typeof metadata?.full_name === "string"
+            ? metadata.full_name
+            : undefined;
+        setName(nameFromMetadata ?? user.email ?? "");
+      }
+
+      setIsLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unexpected error");
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className=" flex items-center justify-center h-screen w-full flex flex-col gap-y-2">
+    <div className=" flex h-screen w-full flex-col items-center justify-center gap-y-3">
       <h1 className=" font-semibold text-xl">Log in with</h1>
       <Button
         variant="outline"
         size="lg"
         className=" bg-white text-black hover:bg-neutral-200/70 text-base px-6 py-3 rounded-lg font-semibold"
+        onClick={handleGoogleLogin}
+        disabled={isLoading}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -33,8 +92,18 @@ export default function LoginPage() {
             d="M43.611,20.083L43.595,20L42,20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571	c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"
           />
         </svg>
-        Google
+        {isLoading ? "Redirecting..." : "Google"}
       </Button>
+      {error ? (
+        <p className=" text-sm text-red-500" role="alert" aria-live="polite">
+          {error}
+        </p>
+      ) : null}
+      {name ? (
+        <p className=" text-sm text-green-600" aria-live="polite">
+          Zalogowano jako {name}
+        </p>
+      ) : null}
     </div>
   );
 }
