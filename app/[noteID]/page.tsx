@@ -1,10 +1,9 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
-import { motion } from "motion/react";
-import { Button } from "@/components/ui/button";
+
+import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { useParams, useRouter } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,16 +12,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  ArrowDownToDot,
   ArrowDownToLine,
   ArrowDownWideNarrow,
   Ellipsis,
-  Menu,
+  LoaderCircle,
   Tags,
   Trash,
 } from "lucide-react";
 
-export default function Home() {
+export default function NotePage() {
   const COLLAPSED_TITLE_HEIGHT = 56;
   const [title, setTitle] = useState("");
   const [context, setContext] = useState("");
@@ -31,6 +29,7 @@ export default function Home() {
   const [hasScrolled, setHasScrolled] = useState(false);
   const [titleHeight, setTitleHeight] = useState(COLLAPSED_TITLE_HEIGHT);
   const contextRef = useRef<HTMLTextAreaElement | null>(null);
+  const router = useRouter();
   const supabase = getSupabaseBrowserClient();
   const [createdDate] = useState<Date>(new Date());
   const hasMultipleLines = /\r?\n/.test(title);
@@ -45,7 +44,9 @@ export default function Home() {
   const collapsedTitle =
     canCollapseTitle && firstLine ? `${firstLine}...` : firstLine;
 
-  const router = useRouter();
+  const params = useParams();
+  const noteID = params.noteID;
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const handleScroll = (e: Event) => {
@@ -76,20 +77,73 @@ export default function Home() {
     };
   }, []);
 
+  const handleDelete = async () => {
+    try {
+      const { data: userResult, error: userError } =
+        await supabase.auth.getUser();
+      if (userError) {
+        throw userError;
+      }
+      const userId = userResult.user?.id;
+      if (!userId) {
+        throw new Error("Brak zalogowanego użytkownika");
+      }
+
+      const { error: deleteError } = await supabase
+        .from("notes")
+        .delete()
+        .eq("owner_id", userId)
+        .eq("id", noteID);
+      if (deleteError) {
+        throw deleteError;
+      }
+    } catch (error) {
+      console.error("Error deleting note:", error);
+    }
+    router.push("/");
+  };
+
   const handleSave = async () => {
     try {
       const { data: userResult, error: userError } =
         await supabase.auth.getUser();
-      if (userError) throw userError;
-
+      if (userError) {
+        throw userError;
+      }
       const userId = userResult.user?.id;
-      if (!userId) throw new Error("Brak zalogowanego użytkownika");
+      if (!userId) {
+        throw new Error("Brak zalogowanego użytkownika");
+      }
 
       const now = new Date();
 
-      const { data: newNote, error: insertError } = await supabase
+      const { data: existingNote, error: existingError } = await supabase
         .from("notes")
-        .insert([
+        .select("id")
+        .eq("owner_id", userId)
+        .eq("id", noteID)
+        .maybeSingle();
+
+      if (existingError && existingError.code !== "PGRST116") {
+        throw existingError;
+      }
+
+      if (existingNote) {
+        const { error: updateError } = await supabase
+          .from("notes")
+          .update({
+            title,
+            context,
+            updated_at: now,
+          })
+          .eq("id", existingNote.id);
+
+        if (updateError) {
+          throw updateError;
+        }
+        console.log("Note updated");
+      } else {
+        const { error: insertError } = await supabase.from("notes").insert([
           {
             owner_id: userId,
             title,
@@ -97,24 +151,61 @@ export default function Home() {
             created_at: now,
             updated_at: now,
           },
-        ])
-        .select("id")
-        .single();
+        ]);
 
-      if (insertError) throw insertError;
-
-      router.refresh();
-      if (newNote?.id) router.push(`/${newNote.id}`);
+        if (insertError) {
+          throw insertError;
+        }
+        console.log("Note created");
+      }
     } catch (error) {
       console.error("Error saving data:", error);
     }
   };
 
   useEffect(() => {
-    setTitle("");
-    setContext("");
-  }, []);
+    async function loadNote() {
+      try {
+        setIsLoading(true);
+        console.log("Loading note...");
+        const { data: userResult, error: userError } =
+          await supabase.auth.getUser();
+        if (userError) {
+          throw userError;
+        }
+        const userId = userResult.user?.id;
+        if (!userId) {
+          throw new Error("Brak zalogowanego użytkownika");
+        }
+        const { data: noteData, error: noteError } = await supabase
+          .from("notes")
+          .select("title, context, created_at")
+          .eq("owner_id", userId)
+          .eq("id", noteID)
+          .maybeSingle();
+        if (noteError) {
+          throw noteError;
+        }
+        if (noteData) {
+          setTitle(noteData.title);
+          setContext(noteData.context);
+        }
+      } catch (error) {
+        console.error("Error loading note:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadNote();
+  }, [noteID]);
 
+  if (isLoading) {
+    return (
+      <div className=" w-full h-full">
+        <LoaderCircle className=" w-20 h-20 text-amber-500 animate-spin bottom-0 top-0 my-auto right-0 left-0 absolute mx-auto" />
+      </div>
+    );
+  }
   return (
     <div ref={pageRef} className=" w-full h-full overflow-auto">
       <motion.div
@@ -131,13 +222,20 @@ export default function Home() {
             >
               <DropdownMenuItem
                 onClick={() => handleSave()}
-                disabled={
-                  title.trim().length === 0 && context.trim().length === 0
-                }
+                disabled={title.trim().length === 0 && context.trim().length === 0}
                 className=" justify-between font-semibold rounded-lg hover:!bg-neutral-100"
               >
                 Save
                 <ArrowDownToLine className=" w-4 h-4 text-amber-500" />
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => handleDelete()}
+                variant="destructive"
+                className=" justify-between font-semibold rounded-lg hover:!bg-red-100"
+              >
+                Delete
+                <Trash className=" w-4 h-4" />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

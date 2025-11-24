@@ -24,7 +24,6 @@ export default function LoginPage() {
           provider: "google",
           options: redirectTo ? { redirectTo } : undefined,
         });
-
       if (supabaseError) {
         throw supabaseError;
       }
