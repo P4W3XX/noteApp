@@ -207,7 +207,6 @@ export default function SearchUI() {
 
   useEffect(() => {
     if (isSearchOpen && inputRef.current) {
-      // Dodaj małe opóźnienie żeby animacja się zakończyła
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);

@@ -97,7 +97,7 @@ export default function Sidebar() {
           event: "*",
           schema: "public",
           table: "notes",
-          filter: `user_id=eq.${userId}`,
+          filter: `owner_id=eq.${userId}`,
         },
         (payload) => {
           if (payload.eventType === "DELETE") {
@@ -147,10 +147,6 @@ export default function Sidebar() {
           New Note
         </Button>
         <SearchButton />
-        <Button className=" w-full justify-start text-base bg-transparent hover:bg-neutral-200/70 rounded-lg font-semibold">
-          <Image src="/gallery.svg" alt="Gallery" width={18} height={18} />
-          Gallery
-        </Button>
       </div>
       <div className=" mt-5 h-fit min-h-80">
         <h1 className=" px-4 text-sm font-medium text-black/40">Your Notes</h1>

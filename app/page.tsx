@@ -1,25 +1,17 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { motion } from "motion/react";
-import { Button } from "@/components/ui/button";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  ArrowDownToDot,
   ArrowDownToLine,
-  ArrowDownWideNarrow,
   Ellipsis,
-  Menu,
-  Tags,
-  Trash,
 } from "lucide-react";
 
 export default function Home() {
@@ -32,7 +24,6 @@ export default function Home() {
   const [titleHeight, setTitleHeight] = useState(COLLAPSED_TITLE_HEIGHT);
   const contextRef = useRef<HTMLTextAreaElement | null>(null);
   const supabase = getSupabaseBrowserClient();
-  const [createdDate] = useState<Date>(new Date());
   const hasMultipleLines = /\r?\n/.test(title);
   const exceedsCollapsedHeight = titleHeight > COLLAPSED_TITLE_HEIGHT + 1;
   const canCollapseTitle =
@@ -127,14 +118,14 @@ export default function Home() {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className=" bg-white rounded-xl min-w-[12rem]"
+              className=" bg-white rounded-xl min-w-48"
             >
               <DropdownMenuItem
                 onClick={() => handleSave()}
                 disabled={
                   title.trim().length === 0 && context.trim().length === 0
                 }
-                className=" justify-between font-semibold rounded-lg hover:!bg-neutral-100"
+                className=" justify-between font-semibold rounded-lg hover:bg-neutral-100!"
               >
                 Save
                 <ArrowDownToLine className=" w-4 h-4 text-amber-500" />
@@ -154,21 +145,6 @@ export default function Home() {
         }}
         className={`w-full px-4 pt-4 origin-left min-h-14 h-auto sticky bg-transparent -top-3.5 overflow-hidden`}
       >
-        {/*
-        <h1 className=" absolute top-1 text-black/50 right-0 left-0 mx-auto w-min text-sm font-semibold whitespace-nowrap">
-          {createdDate.toLocaleDateString("en-US", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })}{" "}
-          at{" "}
-          {createdDate.toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          })}
-        </h1>
-        */}
         {!title && (
           <motion.h1
             initial={true}

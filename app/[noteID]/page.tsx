@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -13,10 +13,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   ArrowDownToLine,
-  ArrowDownWideNarrow,
   Ellipsis,
   LoaderCircle,
-  Tags,
   Trash,
 } from "lucide-react";
 
@@ -31,7 +29,6 @@ export default function NotePage() {
   const contextRef = useRef<HTMLTextAreaElement | null>(null);
   const router = useRouter();
   const supabase = getSupabaseBrowserClient();
-  const [createdDate] = useState<Date>(new Date());
   const hasMultipleLines = /\r?\n/.test(title);
   const exceedsCollapsedHeight = titleHeight > COLLAPSED_TITLE_HEIGHT + 1;
   const canCollapseTitle =
@@ -47,6 +44,20 @@ export default function NotePage() {
   const params = useParams();
   const noteID = params.noteID;
   const [isLoading, setIsLoading] = useState(false);
+
+  const resizeContextTextarea = useCallback(
+    (textarea?: HTMLTextAreaElement | null) => {
+      const target = textarea ?? contextRef.current;
+      if (!target) return;
+      target.style.height = "auto";
+      target.style.height = `${target.scrollHeight}px`;
+    },
+    []
+  );
+
+  useEffect(() => {
+    resizeContextTextarea();
+  }, [context, resizeContextTextarea]);
 
   useEffect(() => {
     const handleScroll = (e: Event) => {
@@ -197,7 +208,7 @@ export default function NotePage() {
       }
     }
     loadNote();
-  }, [noteID]);
+  }, [noteID, supabase]);
 
   if (isLoading) {
     return (
@@ -218,12 +229,12 @@ export default function NotePage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className=" bg-white rounded-xl min-w-[12rem]"
+              className=" bg-white rounded-xl min-w-48"
             >
               <DropdownMenuItem
                 onClick={() => handleSave()}
                 disabled={title.trim().length === 0 && context.trim().length === 0}
-                className=" justify-between font-semibold rounded-lg hover:!bg-neutral-100"
+                className=" justify-between font-semibold rounded-lg hover:bg-neutral-100!"
               >
                 Save
                 <ArrowDownToLine className=" w-4 h-4 text-amber-500" />
@@ -232,7 +243,7 @@ export default function NotePage() {
               <DropdownMenuItem
                 onClick={() => handleDelete()}
                 variant="destructive"
-                className=" justify-between font-semibold rounded-lg hover:!bg-red-100"
+                className=" justify-between font-semibold rounded-lg hover:bg-red-100!"
               >
                 Delete
                 <Trash className=" w-4 h-4" />
@@ -252,21 +263,6 @@ export default function NotePage() {
         }}
         className={`w-full px-4 pt-4 origin-left min-h-14 h-auto sticky bg-transparent -top-3.5 overflow-hidden`}
       >
-        {/*
-        <h1 className=" absolute top-1 text-black/50 right-0 left-0 mx-auto w-min text-sm font-semibold whitespace-nowrap">
-          {createdDate.toLocaleDateString("en-US", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })}{" "}
-          at{" "}
-          {createdDate.toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          })}
-        </h1>
-        */}
         {!title && (
           <motion.h1
             initial={true}
@@ -324,8 +320,7 @@ export default function NotePage() {
         onChange={(e) => setContext(e.target.value)}
         className=" w-full caret-amber-500 resize-none focus:outline-none px-4"
         onInput={(e) => {
-          e.currentTarget.style.height = "auto";
-          e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
+          resizeContextTextarea(e.currentTarget);
         }}
       />
     </div>
