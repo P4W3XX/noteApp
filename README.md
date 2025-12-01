@@ -1,6 +1,6 @@
 <div align="center">
 
-# NoteAI
+# NoteApp
 
 Lekka aplikacja Next.js do szybkiego zapisywania pomysłów i synchronizacji notatek poprzez Supabase.
 
